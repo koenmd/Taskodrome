@@ -16,8 +16,10 @@ var FONT_SIZE = "10pt";
 var FONT = FONT_SIZE + " " + FONT_FAMILY;
 
 var BLUE_COLOR = "#428AC8";
+var AKTIV_COLOR = "#393939";
 
 var CARD_TEXT_H_OFFSET = 12;
+var CARD_TEXT_AKTIV_H_OFFSET = 90;
 
 var COL_HEADER_TEXT_OFFSET = 10;
 var COL_HEADER_FONT_COLOR = "#FFFFFF";
@@ -213,7 +215,7 @@ function createCard(panel, position, issues, issue, selectedCard, cardDescArray,
 
   var cardHeaderHeightOut = { value : -1 };
   var cardHeaderMarkColor = getColorByStatus(issue.status);
-  var cardHeader = createCardHeader(issue.id, cardHeaderMarkColor, position.width, issue.priorityCode, cardHeaderHeightOut);
+  var cardHeader = createCardHeader(issue.id, issue.aktiv, cardHeaderMarkColor, position.width, issue.priorityCode, cardHeaderHeightOut);
 
   var y = cardHeaderHeightOut.value * 1.5;
 
@@ -224,7 +226,7 @@ function createCard(panel, position, issues, issue, selectedCard, cardDescArray,
     y += assignee.getBounds().height * 1.5;
   }
 
-  var summary = createCardSummary(issue.summary, position.width);
+  var summary = createCardSummary("[" + issue.project + "] " + issue.summary, position.width);
   summary.y = y;
   var summaryHeight = summary.getBounds() ? summary.getBounds().height : 0;
   y += summaryHeight + 10;
@@ -503,14 +505,16 @@ function createRect(width, height, strokeColor, fillColor) {
   return back;
 };
 
-function createCardHeader(id, markColor, cardWidth, priorityCode, heightOut) {
+function createCardHeader(id, aktivnummer, markColor, cardWidth, priorityCode, heightOut) {
   var cont = new createjs.Container();
 
   var number = createCardNumber(id, cardWidth);
+  var aktiv = createAktiv(aktivnummer);
   var height = number.getBounds().height * 2;
   heightOut.value = height;
   var numberWidth = number.getBounds().width;
   number.y = height / 4;
+  aktiv.y = height / 4;
 
   var back = new createjs.Shape();
   back.graphics.setStrokeStyle(1);
@@ -529,6 +533,7 @@ function createCardHeader(id, markColor, cardWidth, priorityCode, heightOut) {
 
   cont.addChild(back);
   cont.addChild(number);
+  cont.addChild(aktiv);
   cont.addChild(statusMark);
   if (priorityMark) {
     cont.addChild(priorityMark);
@@ -574,9 +579,19 @@ function createCardNumber(issueNumber, width) {
   return cont;
 };
 
+function createAktiv(aktivNumber)
+{
+  var cont = new createjs.Container();
+  var aktiv = new createjs.Text(aktivNumber, FONT, AKTIV_COLOR);
+
+  cont.addChild(aktiv);
+  cont.x = CARD_TEXT_AKTIV_H_OFFSET;
+  return cont;
+};
+
 function createPriorityMark(priorityCode, h_offset, height)
 {
-  var path = "plugins/Taskodrome/files/assets/";
+  var path = "plugin_file.php?file=Taskodrome/assets/";
   switch (priorityCode) {
     case "20": path += "lower.png"; break;
     case "30": path += "minus.png"; break;
@@ -591,7 +606,6 @@ function createPriorityMark(priorityCode, h_offset, height)
     console.error("Unable to load priorityMark bitmap");
     return null;
   }
-
   priorityMark.x = h_offset + 20;
   priorityMark.y = (height - 20) / 2;
   return priorityMark;

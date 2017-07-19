@@ -17,7 +17,9 @@ function getIssuesRaw() {
       priority: el.getAttribute("priority"),
       priorityCode: el.getAttribute("priorityCode"),
       reproducibility: el.getAttribute("reproducibility"),
-      version: el.getAttribute("version")
+      version: el.getAttribute("version"),
+      project: el.getAttribute("project"),
+      aktiv: el.getAttribute("aktiv")
     };
   }
   
@@ -210,6 +212,10 @@ function getLangReportDetails() {
   ret["priority"] = pri ? pri : "Priority";
   var repr = document.getElementById("lang_reproducibility").getAttribute("value");
   ret["reproducibility"] = repr ? repr : "Reproducibility";
+  var project = document.getElementById("lang_project").getAttribute("value");
+  ret["project"] = project ? project : "Project";
+  var aktiv = document.getElementById("lang_aktiv").getAttribute("value");
+  ret["aktiv"] = aktiv ? aktiv : "Aktiv";
   return ret;
 }
 

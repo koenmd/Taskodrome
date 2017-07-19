@@ -33,6 +33,8 @@
     $issues_array_html = '';
     $allowed_statuses_html = '';
 
+    $aktiv_field_id = 3;
+
     print '<div id="taskodrome_data" hidden="true">
     ';
 
@@ -71,6 +73,19 @@
       $issues_array_html .= 'updateTime="'.$t_row->last_updated.'" ';
       $description = strip_tags($t_row->description);
       $description = str_replace('"', '&#34;', $description);
+      $description = "";
+
+      $project = project_get_field( $t_row->project_id, 'name' );
+      $project = strip_tags(str_replace('"', '&#34;', $project));
+      $aktiv = "";
+      if(custom_field_is_linked($aktiv_field_id,$t_row->project_id))
+      {
+         $aktiv = custom_field_get_value($aktiv_field_id,$t_row->id);
+      }
+      $aktiv = strip_tags(str_replace('"', '&#34;', $aktiv));
+      $issues_array_html .= 'project="'.$project.'" ';
+      $issues_array_html .= 'aktiv="'.$aktiv.'" ';
+
       $issues_array_html .= 'description="'.$description.'" ';
       $issues_array_html .= 'severity="'.get_enum_element('severity', $t_row->severity).'" ';
       $issues_array_html .= 'priority="'.get_enum_element('priority', $t_row->priority).'" ';
@@ -134,7 +149,7 @@
       $status_order .= $t_value.';';
     }
 
-    $t_versions = version_get_all_rows( helper_get_current_project() );
+    $t_versions = version_get_all_rows_ASC( helper_get_current_project() );
     $t_versions_cnt = count( $t_versions );
     for( $k=0; $k < $t_versions_cnt; $k++ ) {
       $ver_id = $t_versions[$k]['id'];
@@ -144,6 +159,8 @@
     print '<p class="status_board_order" value="'.$status_order.'"></p>';
     print '<p id="cooldown_period_days" value="'. plugin_config_get("cooldown_period_days") .'"></p>';
     print '<p id="cooldown_period_hours" value="'. plugin_config_get("cooldown_period_hours") .'"></p>';
+    print '<p id="lang_project" value="Project"></p>';
+    print '<p id="lang_aktiv" value="Aktiv"></p>';
     print '<p id="lang_description" value="'. lang_get("description") .'"></p>';
     print '<p id="lang_severity" value="'. lang_get("severity") .'"></p>';
     print '<p id="lang_priority" value="'. lang_get("priority") .'"></p>';
@@ -178,6 +195,79 @@
     ';
   }
 
+  /**
+ * Return all versions for the specified project
+ * @param integer $p_project_id A valid project id.
+ * @param boolean $p_released   Whether to include released versions.
+ * @param boolean $p_obsolete   Whether to include obsolete versions.
+ * @param boolean $p_inherit    True to include versions from parent projects,
+ *                              false not to, or null to use configuration
+ *                              setting ($g_subprojects_inherit_versions).
+ * @return array Array of version rows (in array format)
+ */
+function version_get_all_rows_ASC( $p_project_id, $p_released = null, $p_obsolete = false, $p_inherit = null ) {
+	global $g_cache_versions, $g_cache_versions_project;
+
+	if(    $p_inherit
+		|| $p_inherit === null && ON == config_get( 'subprojects_inherit_versions' )
+	) {
+		$t_project_ids = project_hierarchy_inheritance( $p_project_id );
+	} else {
+		$t_project_ids[] = $p_project_id;
+	}
+
+	$t_is_cached = true;
+	foreach( $t_project_ids as $t_project_id ) {
+		if( !isset( $g_cache_versions_project[$t_project_id] ) ) {
+			$t_is_cached = false;
+			break;
+		}
+	}
+	if( $t_is_cached ) {
+		$t_versions = array();
+		foreach( $t_project_ids as $t_project_id ) {
+			if( !empty( $g_cache_versions_project[$t_project_id]) ) {
+				foreach( $g_cache_versions_project[$t_project_id] as $t_id ) {
+					$t_version_row = version_cache_row( $t_id );
+					if( $p_obsolete == false && (int)$t_version_row['obsolete'] == 1 ) {
+						continue;
+					}
+
+					$t_versions[] = $t_version_row;
+				}
+			}
+		}
+		return $t_versions;
+	}
+
+	db_param_push();
+	$t_project_where = version_get_project_where_clause( $p_project_id, $p_inherit );
+	$t_query = 'SELECT * FROM {project_version} WHERE ' . $t_project_where;
+
+	$t_query_params = array();
+
+	if( $p_released !== null ) {
+		$t_query .= ' AND released = ' . db_param();
+		$t_query_params[] = (bool)$p_released;
+	}
+
+	if( $p_obsolete !== null ) {
+		$t_query .= ' AND obsolete = ' . db_param();
+		$t_query_params[] = (bool)$p_obsolete;
+	}
+
+	$t_query .= ' ORDER BY date_order ASC';
+
+	$t_result = db_query( $t_query, $t_query_params );
+	$t_rows = array();
+	while( $t_row = db_fetch_array( $t_result ) ) {
+		$g_cache_versions[(int)$t_row['id']] = $t_row;
+
+		$t_rows[] = $t_row;
+	}
+	return $t_rows;
+}
+  
   function get_user_array()
   {
     class User {
