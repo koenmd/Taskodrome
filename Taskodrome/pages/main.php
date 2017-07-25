@@ -321,7 +321,9 @@ function version_get_all_rows_ASC( $p_project_id, $p_released = null, $p_obsolet
       $user = new User();
       $user->id = $t_user['id'];
       $user->name = $t_user_name;
-      array_push($user_array, $user);
+      if($user->name != "administrator"){
+        array_push($user_array, $user);
+      }
     }
 
     $user = new User();
